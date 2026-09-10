@@ -186,7 +186,10 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default=None,
-        help="gpt-5.5 | claude-opus-4-6 | glm-5.2 (default: $CARTWHEEL_MODEL or gpt-5.5)",
+        help=(
+            "gpt-5.5 | claude-opus-4-6 | glm-5.2, or any model id your shared LLM "
+            "service serves (default: $LLM_MODEL, else $CARTWHEEL_MODEL or gpt-5.5)"
+        ),
     )
     tracing_options = parser.add_mutually_exclusive_group()
     tracing_options.add_argument(

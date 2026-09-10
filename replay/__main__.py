@@ -21,12 +21,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
+from agent import llm
 from replay.harness import ReplayInfraError, replay_case, summarize_rollouts
 from replay.rollout import (
     apply_checks,
@@ -62,7 +62,7 @@ def make_runner(
     judges = {
         mode: load_frozen_judge(mode)
         for mode in case["expected"].get("judges", {})
-        if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if llm.have_model_key()
     }
 
     def runner() -> dict[str, Any]:

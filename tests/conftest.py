@@ -18,6 +18,36 @@ import pytest
 from seed.generate import generate_world
 
 
+# Credentials a developer keeps in .env (a shared LLM service, a vendor key,
+# the local Langfuse stack) reach these tests through any code path that
+# calls load_env, and os.environ keeps them for the rest of the session. A
+# stray key changes model routing or sends a test that promises to stay
+# offline to a provider or to localhost:3000, so the offline suite runs with
+# none of them. The live Module 3 tests override this fixture in
+# tests/eval/conftest.py.
+SERVICE_ENV_VARS = (
+    "LLM_API_KEY",
+    "LLM_BASE_URL",
+    "LLM_MODEL",
+    "LLM_JUDGE_MODEL",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "ANTHROPIC_API_KEY",
+    "TOGETHER_API_KEY",
+    "GEMINI_API_KEY",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+    "LANGFUSE_HOST",
+)
+
+
+@pytest.fixture(autouse=True)
+def offline_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove every service credential for the duration of one test."""
+    for name in SERVICE_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture(scope="session")
 def world(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     root = tmp_path_factory.mktemp("world")

@@ -61,7 +61,11 @@ def _backend() -> str:
     Return ``docetl`` when a model key is present and ``none`` in an offline
     environment.
     """
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY"):
+    if (
+        os.environ.get("LLM_API_KEY")
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+    ):
         return "docetl"
     return "none"
 
@@ -110,7 +114,16 @@ def classify_store(
 
 
 def _litellm_model_id(model: str) -> str:
-    """Map the course scale-model name to a LiteLLM-routable model id."""
+    """Map the course scale-model name to a LiteLLM-routable model id.
+
+    With the shared LLM service configured (agent/llm.py) the cheap judge
+    runs there instead, on LLM_JUDGE_MODEL or LLM_MODEL.
+    """
+    from agent import llm
+
+    if llm.routes_to_gateway(model):
+        llm.configure()  # DocETL builds its own client from the environment
+        return llm.litellm_model_id(llm.judge_model(model))
     return _SCALE_MODEL_LITELLM.get(model, model)
 
 

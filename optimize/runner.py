@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from agent import llm
 from observability.instrument import load_env
 from replay.__main__ import make_runner
 from replay.harness import replay_case
@@ -53,21 +54,16 @@ def required_judge_keys(cases: list[dict[str, Any]]) -> set[str]:
     }
     for mode in modes:
         model = load_frozen_judge(mode)["model"]
-        if model.startswith("claude"):
-            keys.add("ANTHROPIC_API_KEY")
-        elif model.startswith("gpt") or model.startswith("openai/"):
-            keys.add("OPENAI_API_KEY")
+        key = model_provider_key(model)
+        if key in {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "LLM_API_KEY"}:
+            keys.add(key)
     return keys
 
 
 def model_provider_key(model: str) -> str | None:
-    if model.startswith("gpt") or model.startswith("openai/"):
-        return "OPENAI_API_KEY"
-    if model.startswith("claude") or model.startswith("anthropic/"):
-        return "ANTHROPIC_API_KEY"
-    if model.startswith("glm") or model.startswith("together_ai/") or model.startswith("zai-org/"):
-        return "TOGETHER_API_KEY"
-    return None
+    """The key that pays for ``model``: one per vendor, or LLM_API_KEY when
+    the shared LLM service is configured and serves every model."""
+    return llm.provider_key_name(model)
 
 
 def read_prices(path: Path, model: str) -> tuple[str, float, float]:

@@ -44,7 +44,11 @@ def configure_model_tracing(*, openai_model: bool) -> None:
 def setup_openai_tracing() -> bool:
     """Explicitly select hosted tracing, including for non-OpenAI inference."""
     global _openai_tracing_enabled
-    if not os.environ.get("OPENAI_API_KEY", "").strip():
+    from agent.llm import openai_platform_key
+
+    # An OpenAI platform key, not the shared LLM service key: hosted tracing
+    # uploads to OpenAI even when inference goes through a gateway.
+    if not openai_platform_key():
         raise ValueError("--trace-openai requires OPENAI_API_KEY; omit the flag for local chat")
     set_trace_processors([default_processor()])
     _openai_tracing_enabled = True

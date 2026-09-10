@@ -39,6 +39,21 @@ If `.env` does not exist, copy `.env.example` to `.env`. Add a key for the model
 
 The default model is `gpt-5.5` with OpenAI. You can select `claude-opus-4-6` with Anthropic or `glm-5.2` with Together AI using `CARTWHEEL_MODEL` in `.env`. The CLI's `--model` flag overrides the default. You need a key for only one provider.
 
+### Using one shared LLM service instead of the vendor APIs
+
+If your models come from a single OpenAI-compatible gateway (a company shared LLM service, an internal proxy, LiteLLM Proxy, Ollama's OpenAI endpoint), set these in `.env` and every model call in the repository goes there: the agent, the frozen judges, and the DocETL scaling backend.
+
+```bash
+LLM_API_KEY=...                      # gateway key
+LLM_BASE_URL=https://.../v1          # OpenAI-compatible endpoint
+LLM_MODEL=openai.gpt-5.4-nano        # swap models by editing this line
+LLM_JUDGE_MODEL=                     # optional; the judges' model, defaults to LLM_MODEL
+```
+
+Swapping models means editing `LLM_MODEL`; nothing else changes. A course model name (`gpt-5.5`, `claude-opus-4-6`) given through `CARTWHEEL_MODEL`, `--model`, or a frozen judge names a vendor model the gateway does not host, so it is routed to `LLM_MODEL` and the substitution is logged on every run. A name with a slash (`ollama_chat/local-model`) still names a provider for LiteLLM to call directly, gateway or not.
+
+Leave the `LLM_*` variables empty and nothing changes: the course models are called on their own vendor APIs as before. Both variables `LLM_API_KEY` and `LLM_BASE_URL` must be set together. `agent/llm.py` holds the whole mechanism, and `--trace-openai` still needs a real OpenAI platform key, which a gateway key is not.
+
 The starter contains unfinished homework functions. Tests for unfinished functions report expected failures until you implement them. Follow [Homework 1](homework/module-1/hw1.md) to complete the five support tools, then use the chat interface:
 
 ```bash
@@ -78,6 +93,7 @@ seed/
   validate.py             checks every number in every doc against facts.yaml
 agent/                    support agent scaffold
   agent.py                system prompt, model wiring, provided tools, tool registration
+  llm.py                  optional shared-service routing for every model call
   tools.py                HOMEWORK 1: five tool holes
   auth.py                 auth context + permission checks (complete; do not weaken)
   db.py                   typed SQLite access layer (complete)

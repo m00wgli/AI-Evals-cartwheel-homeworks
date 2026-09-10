@@ -33,6 +33,18 @@ EVAL_K = 5
 PINNED_AGENT_MODEL = os.environ.get("CARTWHEEL_EVAL_MODEL", "gpt-5.5")
 
 
+@pytest.fixture(autouse=True)
+def offline_env() -> None:
+    """Keep the configured credentials, overriding tests/conftest.py.
+
+    test_e2e.py runs the real agent and the frozen judges against a live
+    model, so this directory needs the environment as the developer (or CI)
+    set it. test_unit.py and test_integration.py stay offline by
+    construction: no key means no call.
+    """
+    return None
+
+
 @pytest.fixture(scope="session")
 def evaluation_cases() -> list[dict]:
     """Every evaluation case in the Module 3 CI set."""

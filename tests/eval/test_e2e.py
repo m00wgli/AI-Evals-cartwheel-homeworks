@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pytest
 
+from agent import llm
 from replay.rollout import (
     apply_checks,
     fresh_world,
@@ -38,8 +39,7 @@ from replay.rollout import (
 from tests.eval.conftest import EVAL_K, PINNED_AGENT_MODEL
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("CARTWHEEL_RUN_E2E") != "1"
-    or not os.environ.get("OPENAI_API_KEY"),
+    os.environ.get("CARTWHEEL_RUN_E2E") != "1" or not llm.have_model_key(),
     reason=(
         "complete agent tests need CARTWHEEL_RUN_E2E=1 and an API key; "
         "CI runs it on pull requests"
@@ -49,7 +49,7 @@ pytestmark = pytest.mark.skipif(
 # Judges run when the judge model's key is present; otherwise the run is
 # scored by code checks alone (and says so), because a missing key must not
 # silently pass a judge-guarded case as green-by-default.
-JUDGE_KEY_PRESENT = bool(os.environ.get("ANTHROPIC_API_KEY"))
+JUDGE_KEY_PRESENT = bool(os.environ.get("ANTHROPIC_API_KEY")) or llm.is_active()
 
 CASES = load_cases()
 

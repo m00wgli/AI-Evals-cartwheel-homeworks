@@ -112,14 +112,25 @@ LITELLM_COURSE_MODELS = {
 def resolve_model(name: str | None) -> Any:
     """Turn a course model name into what Agent(model=...) expects.
 
-    OpenAI models pass through as plain strings. Everything else goes through
-    LiteLLM (claude-opus-4-6 via the Anthropic API with ANTHROPIC_API_KEY,
-    glm-5.2 via Together AI with TOGETHER_API_KEY). Same agent code, three
-    providers; only this function changes.
-    """
-    import os
+    Two routes, selected by the environment (agent/llm.py):
 
-    name = name or os.environ.get("CARTWHEEL_MODEL") or DEFAULT_MODEL
+    Shared LLM service (LLM_API_KEY + LLM_BASE_URL set). One
+    OpenAI-compatible endpoint serves every model, and ``llm.configure()``
+    has just made a client for it the SDK default, so the model is a plain
+    string and swapping models means editing LLM_MODEL. A course model name
+    given here is mapped onto LLM_MODEL, since the service hosts its own ids.
+
+    Vendor APIs (the course default). OpenAI models pass through as plain
+    strings. Everything else goes through LiteLLM (claude-opus-4-6 via the
+    Anthropic API with ANTHROPIC_API_KEY, glm-5.2 via Together AI with
+    TOGETHER_API_KEY). Same agent code, three providers.
+    """
+    from agent import llm
+
+    llm.configure()
+    name = name or llm.default_model()
+    if llm.routes_to_gateway(name):
+        return llm.model_id(name)
     if name.startswith("gpt-"):
         return name
     litellm_id = LITELLM_COURSE_MODELS.get(name, name)
@@ -491,8 +502,12 @@ def build_agent(
     the tool layer (``agent/auth.py``); guards are defense in depth on top of
     it, never a replacement for it.
     """
+    from agent import llm
+
     resolved = resolve_model(model)
-    configure_model_tracing(openai_model=isinstance(resolved, str))
+    # A model string on the shared LLM service is not an OpenAI platform
+    # model, so hosted trace export does not apply to it either.
+    configure_model_tracing(openai_model=isinstance(resolved, str) and not llm.is_active())
     if not defenses:
         return Agent[AuthContext](
             name="cartwheel-support",

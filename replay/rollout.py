@@ -374,12 +374,21 @@ def judge_reply(judge: dict[str, Any], reply: str, docs: str) -> str:
     This is a live call to the judge's pinned model (a Module 2 freeze pins
     both the prompt and the model id), routed through LiteLLM like the
     course models. Callers check whether the required API key is present.
+
+    With the shared LLM service configured (agent/llm.py) the call goes to
+    that one endpoint instead, on LLM_JUDGE_MODEL or LLM_MODEL, because the
+    service does not host the vendor model ids a freeze pins. The
+    substitution is logged, not silent.
     """
     import litellm
 
+    from agent import llm
     from agent.agent import LITELLM_COURSE_MODELS
 
-    model = LITELLM_COURSE_MODELS.get(judge["model"], judge["model"])
+    if llm.routes_to_gateway(judge["model"]):
+        model = llm.litellm_model_id(llm.judge_model(judge["model"]))
+    else:
+        model = LITELLM_COURSE_MODELS.get(judge["model"], judge["model"])
     user_content = (
         f"Agent reply:\n{reply}\n\nPolicy documents retrieved in the trace:\n{docs}"
     )
@@ -390,6 +399,7 @@ def judge_reply(judge: dict[str, Any], reply: str, docs: str) -> str:
             {"role": "user", "content": user_content},
         ],
         temperature=0,
+        **llm.litellm_kwargs(judge["model"]),
     )
     text = response.choices[0].message.content or ""
     match = re.search(r'"answer"\s*:\s*"(pass|fail)"', text)
